@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StorePostRequest;
+use App\Http\Requests\UpdatePostRequest;
+use App\Http\Resources\PostResource;
 use App\Models\Post;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
@@ -18,7 +20,7 @@ class PostController extends Controller
             ->latest()
             ->paginate(20);
 
-        return response()->json($posts);
+        return PostResource::collection($posts);
     }
 
     public function show(Post $post)
@@ -27,7 +29,7 @@ class PostController extends Controller
             abort(404);
         }
 
-        return response()->json($post);
+        return new PostResource($post->load('user'));
     }
 
     public function create()
@@ -35,18 +37,12 @@ class PostController extends Controller
         return 'post.create';
     }
 
-    public function store(Request $request)
+    public function store(StorePostRequest $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required',
-            'is_draft' => 'required|boolean',
-            'published_at' => 'nullable|date',
-        ]);
 
-        $post = auth()->user()->posts()->create($validated);
+        $post = auth()->user()->posts()->create($request->validated());
 
-        return response()->json($post, 201);
+        return new PostResource($post);
     }
 
     public function edit(Post $post)
@@ -56,20 +52,13 @@ class PostController extends Controller
         return 'posts.edit';
     }
 
-    public function update(Request $request, Post $post)
+    public function update(UpdatePostRequest $request, Post $post)
     {
         $this->authorize('update', $post);
 
-        $validated = $request->validate([
-            'title' => 'string|max:255',
-            'content' => 'string',
-            'is_draft' => 'boolean',
-            'published_at' => 'nullable|date',
-        ]);
+        $post->update($request->validated());
 
-        $post->update($validated);
-
-        return response()->json($post);
+        return new PostResource($post);
     }
 
     public function destroy(Post $post)
